@@ -5,6 +5,10 @@ using SignPLAPI.Infrastructure.DbContext;
 using SignPLAPI.Infrastructure;
 using SignPLAPI.Application;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
+using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace SignPLAPI
 {
@@ -16,8 +20,20 @@ namespace SignPLAPI
 
             // Add services to the container.
 
-            builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at 
+            builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = actionContext =>
+                {
+                    var modelState = actionContext.ModelState.Values;
+                    return new BadRequestObjectResult(new ErrorsModels
+                    {
+                        Status = (int)HttpStatusCode.BadRequest,
+                        Title = ReasonPhrases.GetReasonPhrase((int)HttpStatusCode.BadRequest),
+                        Errors = modelState.SelectMany(x => x.Errors,(x,y) => y.ErrorMessage).ToList()
+                    });
+                };
+            });
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddAuthentication("MyScheme");
@@ -42,6 +58,11 @@ namespace SignPLAPI
                     BearerFormat = "JWT",
                     Scheme = "bearer"
                 }));
+
+            builder.Services.AddControllers(options =>
+            {
+                options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
+            });
 
             builder.Services.AddSwaggerGen(w =>
                 w.AddSecurityRequirement(
