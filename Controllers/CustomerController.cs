@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SignPLAPI.Application.Accounts.Commands.CreateAccount;
 using SignPLAPI.Application.Accounts.Queries.GetAccounts;
-using SignPLAPI.Application.Customers.Commands;
 using SignPLAPI.Application.Customers.Commands.CreateCustomerFriendsDetailsCommand;
+using SignPLAPI.Application.Customers.Commands.CreateCustomers;
 using SignPLAPI.Application.Customers.Commands.DeleteCustomerDetails;
 using SignPLAPI.Application.Customers.Commands.UpdateCustomerDetails;
 using SignPLAPI.Application.Customers.Queries.GetCustomerById;
@@ -23,12 +23,14 @@ using SignPLAPI.Contracts.Customers.UpdateCustomerDetails;
 using SignPLAPI.Domain.Customers;
 using SignPLAPI.Infrastructure.Presistence;
 using SignPLAPI.Service;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.Linq;
 
 namespace SignPLAPI.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     [ApiController]
-    public class CustomersControler : ControllerBase
+    public class CustomerController : ControllerBase
     {
             private readonly JwtService _jwtService;
 
@@ -36,7 +38,7 @@ namespace SignPLAPI.Controllers
             private readonly IMapper _mapper;
         private readonly Customers _customerModels;
 
-            public CustomersControler(IMediator mediator, IMapper mapper, JwtService jwtService)
+            public CustomerController(IMediator mediator, IMapper mapper, JwtService jwtService)
             {
                 _mediator = mediator;
                 _mapper = mapper;
@@ -46,14 +48,17 @@ namespace SignPLAPI.Controllers
         [HttpGet("/GetCustomerAccounts")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetAccounts()
+        public async Task<IActionResult> GetAccounts([FromQuery]TGetCustomerRequest request)
         {
-            Guid UserId = _jwtService.ExtractJwt();
-            var request = new TGetCustomerRequest(UserId);
-            var query = _mapper.Map<GetCustomersRequest>(request);
+            var query = _mapper.Map<GetCustomersQuery>(request);
             var authResult = await _mediator.Send(query);
-            var response = _mapper.Map<TGetCustomerResponse>(authResult); 
+            var response = _mapper.Map<TGetCustomerResponse>(authResult);
             return Ok(response);
+        }
+
+        public class CustomValidationErrorResponse
+        {
+            public IDictionary<string, IList<string>> Errors { get; set; }
         }
 
         [HttpPost("/CreateCustomers")]
@@ -68,6 +73,8 @@ namespace SignPLAPI.Controllers
             return Ok(response);
         }
 
+
+
         [HttpPut("/UpdateCustomers")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -75,7 +82,7 @@ namespace SignPLAPI.Controllers
         {
             var command = _mapper.Map<UpdateCustomerCommand>(request);
             var authResult = await _mediator.Send(command);
-            var response = _mapper.Map<TUpdateCustomersDetailsRes>(authResult);
+            var response = _mapper.Map<TUpdateCustomersDetailsResponse>(authResult);
 
             return Ok(response);
         }
@@ -88,18 +95,18 @@ namespace SignPLAPI.Controllers
           
             var query = _mapper.Map<DeleteCustomerCommands>(request);
             var authResult = await _mediator.Send(query);
-            var response = _mapper.Map<TDeleteCustomersDetailsRes>(authResult);
+            var response = _mapper.Map<TDeleteCustomersDetailsResponse>(authResult);
             return Ok(response);
         }
 
         [HttpGet("/GetCustomersById")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> GetCustomersById([FromQuery]TGetCustomersByIdReq getCustomersByIdReq)
+        public async Task<IActionResult> GetCustomersById([FromQuery]TGetCustomersByIdRequest getCustomersByIdRequest)
         {
-            var query = _mapper.Map<GetCustByIdQuery>(getCustomersByIdReq);
+            var query = _mapper.Map<GetCustomerByIdQuery>(getCustomersByIdRequest);
             var authResult = await _mediator.Send(query);
-            var response = _mapper.Map<TGetCustomersByIdRes>(authResult);
+            var response = _mapper.Map<TGetCustomersByIdResponse>(authResult);
             return Ok(response);
         }
 
@@ -111,7 +118,7 @@ namespace SignPLAPI.Controllers
             var request = new GetCustomerFriendsQuery();
             //var query = _mapper.Map<GetCustomerFriendsQuery>(request);
             var authResult = await _mediator.Send(request);
-            var response = _mapper.Map<GetCustomerFriendRes>(authResult);
+            var response = _mapper.Map<GetCustomerFriendResponse>(authResult);
             return Ok(response);
         }
 
